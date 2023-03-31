@@ -14,9 +14,9 @@ Please follow the links in this table to view content online:
 | Level  | Skills                    | Location                | Link                                                                                   |
 |--------|---------------------------|-------------------------|----------------------------------------------------------------------------------------|
 | Intro  | what is R?                | what-is-r/              | [Quarto Presentation](https://bendickins.net/what-is-r/)                               |
-| Intro  | simple codes              | the-fourth-r-main/docs/ | [Quarto Presentation](https://bendickins.net/the-fourth-r/simple-codes.html)                                               |
-| Intro  | object types              | the-fourth-r-main/docs/ | [Quarto Presentation](https://bendickins.net/the-fourth-r/object-types.html)                                               |
-| Intro  | reading data              | the-fourth-r-main/docs/ | [Quarto Presentation](https://bendickins.net/the-fourth-r/reading-data.html)                                               |
+| Intro  | simple codes              | the-fourth-r-main/docs/ | [Quarto Presentation](https://bendickins.net/the-fourth-r/simple-codes.html)           |
+| Intro  | object types              | the-fourth-r-main/docs/ | [Quarto Presentation](https://bendickins.net/the-fourth-r/object-types.html)           |
+| Intro  | reading data              | the-fourth-r-main/docs/ | [Quarto Presentation](myfolder/reading-data.html)                                      |
 | Part 1 | the "grammar of graphics" with penguins! | biochem-r-intro | [Presentation (R Markdown)](part1.html)                                         |
 | Part 2 | data prep and contingency tables with COVID data | biochem-r-intro | [Presentation (R Markdown)](part2.html)                                 |
 | Part 3 | linear modelling with sleep data | biochem-r-intro | [Presentation (R Markdown)](part3.html)                                                 |
