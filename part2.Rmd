@@ -1,0 +1,177 @@
+---
+title: "Biochemistry R Introduction Part 2"
+author: "Ben Dickins and Callum Rimmer"
+date: "2023-03-31"
+output: html_document
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+```
+
+# Tutorial Part 2: COVID
+Acknowledgment: data for this section are derived from the [following website](https://www.openintro.org/data/index.php?data=simpsons_paradox_covid) and ultimately from the UK Health Security Agency (when it was known as Public Health England).
+
+## Introduction
+In this part, we will analyse a dataset related to COVID-19 and see Simpson's paradox in action again. We will demonstrate how initial results may not be accurate and how to properly interpret the data.
+
+Now, let's start by loading the required package (actually a package of packages called tidyverse):
+```{r}
+library(tidyverse)
+```
+
+Now the "tidyverse" metapackage is a big deal! It's basically a sub-language within R and one that is very consistent and implements some more modern language features that are not (easily) available in base R. To learn more about the tidyverse you can visit [their webpage](https://www.tidyverse.org) or better still devote some time to learning the fabulous "R for Data Science" book which is [available online](https://r4ds.had.co.nz) (and is co-authored by the creator of the tidyverse).
+
+Those error messages? Not errors. They indicate that functions from some base R packages are masked by functions with the same name in the tidyverse. (I can explain more if you ask me).
+
+## Step 1: Loading the data
+First, let's load the data:
+
+```{r}
+covid <- read_csv("simpsons_paradox_covid.csv")
+```
+
+There are many functions for reading in data, but `read_csv` is a workhorse. I recommend converting data to CSV since this format is minimal. I will discuss some of the problems of data formats in the session, but note here the underscore ("_"). There is a function is base R called `read.csv`, but we are going to prefer the tidyverse functions in this tutorial. (I can explain why if you ask). Notice the use of the assignment operator (discussed at the beginning).
+
+Now, let's take a look at the data in a slightly different way using a polymorphic (let's just say powerful) base R function:
+```{r}
+summary(covid)
+```
+
+The summary statistics above might are not very informative. In fact they are silly. This is because the column types were not specified. Let's read the data again with the correct column types.
+
+```{r}
+covid <- read_csv("simpsons_paradox_covid.csv", col_types = "fff")
+```
+
+Here we have overwritten the previous covid object using the assignment operator. We have also provided a string to the `col_types` argument which specified that each column should be treated as a factor. There are functions that can be used to coerce a column into a factor after import (and I recommend the tidyverse function `parse_factor()` for this), but this solution is elegant.
+
+Now let's try the `summary()` function again:
+
+```{r}
+summary(covid)
+```
+
+Excellent - our data makes sense.
+
+## Step 2: Making a Contingency Table
+Now let's analyse the data using base R functions. This step is optional, as we will use the tidyverse approach later:
+```{r}
+with(covid, table(vaccine_status, outcome))
+with(covid, table(vaccine_status, outcome, age_group))
+```
+
+Now let's use tidyverse functions for a more streamlined analysis.
+
+```{r}
+simpleTabulation <- covid %>% count(vaccine_status, outcome) %>% 
+  pivot_wider(names_from = "outcome", values_from = "n") %>%
+  mutate(deathPerc = 100 * death / (death + survived))
+
+simpleTabulation
+```
+
+There's a lot going on here. First, we are using a tidyverse-specific operator `%>%` called "the pipe". What this is basically doing is passing data from one function to the next. Now what functions are we doing with `count()`, `pivot_wider()` and `mutate()`? We will build the code one line at a time and explain what each line does.
+
+First:
+```{r}
+simpleTabulation <- covid %>% count(vaccine_status, outcome)
+```
+
+The code above groups the data by `vaccine_status` and `outcome`, and counts the number of occurrences in each group, and then assigns this to the object `simpleTabulation`. Feel free to just type `simpleTabulation` into the console (and pressing enter) before going on, to see what has happened.
+
+```{r}
+simpleTabulation <- simpleTabulation %>% pivot_wider(names_from = "outcome", values_from = "n")
+```
+
+The code above pivots the data so that the `outcome` variable (either 'death' or 'survived') becomes column names, and the counts `n` become the values in those columns. The concept of pivoting is very powerful and can be used in the context of untidy data. I recommend reading [chapter 12 of R for Data Science](https://r4ds.had.co.nz/tidy-data.html) to really grok this idea (and you can also type `vignette("pivot")` into R). Alas it is reasonable to expect a large proportion of your time to be taken handling data before you can even start analysis in most projects. Anyway, on we go:
+
+```{r}
+simpleTabulation <- simpleTabulation %>% mutate(deathPerc = 100 * death / (death + survived))
+```
+
+The code above adds a new column `deathPerc` to the dataset. The new column contains the percentage of deaths among each group (vaccinated and unvaccinated). It is calculated by dividing the number of deaths by the total number of cases (deaths + survivals) and multiplying the result by 100. (By the way `mutate()` creates a new "ephemeral" tibble with these changes. We need to assign this back to the object `simpleTabulation` to update, as in previous steps).
+
+Now let's display the `simpleTabulation`:
+```{r}
+simpleTabulation
+```
+
+Excellent, we have our contingency table. That looked harder than base R, but you have actually been exposed to a lot of ideas in the process.
+
+## Step 3: Analyzing the results
+
+Let's see if we can calulate how vaccinated people do relative to unvaccinated people:
+
+```{r}
+VAX <- simpleTabulation %>% filter(vaccine_status == "vaccinated") %>% pull(deathPerc)
+UNVAX <- simpleTabulation %>% filter(vaccine_status == "unvaccinated") %>% pull(deathPerc)
+```
+
+Here we are using the `filter()` function to select only for rows in which the value in the `vaccine_status` column is "vaccinated" (first line) or "unvaccinated" (second line). Let's use the objects we've created to do a simple calulation:
+
+```{r}
+VAX / UNVAX
+```
+
+From the initial calculations, it appears that vaccinated individuals are ~2.45 times more likely to die. However, this result is affected by Simpson's paradox, because more vulnerable people were vaccinated first (at the time of data collection), so we need to analyze the data more carefully.
+
+## Step 4: Resolving Simpson's paradox
+Let's create a **cross-**tabulation to account for age groups and resolve Simpson's paradox:
+
+```{r}
+( crossTabulation <- covid %>% count(age_group, vaccine_status, outcome) %>%
+  pivot_wider(names_from = "outcome", values_from = "n") %>%
+  mutate(deathPerc = 100 * death / (death + survived)) )
+```
+
+Notice has the `count()` function now includes `age_group` as a grouping factor. Did you find those outer brackets a bit odd? What were they doing? They saved us from having to type 'crossTabulation` after typing the command. You can put outer brackets round any assignment command and it will show you the object after doing all the compute. This makes the code more concise and saves time.
+
+Let's now look at older folks and do the simple calculation:
+
+```{r}
+VAX_old <- crossTabulation %>% filter(age_group == "50 +", vaccine_status == "vaccinated") %>% pull(deathPerc)
+UNVAX_old <- crossTabulation %>% filter(age_group == "50 +", vaccine_status == "unvaccinated") %>% pull(deathPerc)
+
+UNVAX_old/VAX_old
+```
+
+Now we see that the **unvaccinated** older folk were ~3.54 times more likely to die. This might be why vaccination was a good idea.
+
+## Step 5: Down to You
+### Tabulation
+Now see if you can create the code to check how much more likely younger folk were to die when unvaccinated (vs. vaccinated). You may need to take a look at the `age_group` column to remind yourself of the codes.
+
+
+### Graphics (hard)
+Do you want a difficult graphical challenge? Try to make this (admiteddly not very useful) graph from the `crossTabulation` object!
+
+```{r echo=FALSE}
+ggplot(crossTabulation, aes(x = age_group, y = deathPerc)) + 
+  geom_bar(stat = "identity", 
+           position = "dodge", 
+           colour = "black", 
+           aes(fill = vaccine_status)) + 
+  scale_fill_manual(values = c("lightblue", "mistyrose"))
+```
+
+Let me give you some clues:
+```{r eval=FALSE}
+ggplot(crossTabulation, aes(x = ?, y = deathPerc)) + 
+  geom_bar(stat = "identity", 
+           position = "dodge", 
+           colour = "?", 
+           ?(fill = vaccine_status))
+```
+
+More hints and explanation:
+
+* start by taking a look at the `crossTabulation` object,
+* `stat = "identity"` tells `geom_bar()` to plot the singular values - it is important to realise that there is only one value for each intersection of factors!
+* `position = "dodge"` tells `geom_bar()` to put bars alongside each other,
+* notice what happens when you change the `colour` argument. What colour is changing? Why?
+* `?(fill = ?)`: can you remember a function that automatically assigns colours based on a variable? It is the same here except with `fill`. What is fill doing?
+* consider adding `scale_fill_manual()` to set your preferred colours.
+
+### A Note on Rubishness
+If you succeeded with that, you will be thinking that the graph is poor because the y axis doesn't really scale properly such is the difference in death rate with age (= large risk factor). It would make more sense to plot two graphs side-by-side (and vary the scales - make them "free" in ggplot parlance). We will look at facet plots during the next part, time permitting.

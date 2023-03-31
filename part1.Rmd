@@ -1,0 +1,145 @@
+---
+title: "Biochemistry R Introduction Part 1"
+author: "Ben Dickins and Callum Rimmer"
+date: "2023-03-31"
+output: html_document
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+```
+
+# Tutorial Part 1: Penguins!
+In this part, we will have some fun with the Palmer Penguins dataset, and we will shoehorn in a statistical learning outcome: understanding Simpson's Paradox. We will start with a simple example and gradually add features to create the final plot. By the end of this tutorial, you will be able to create a visually appealing plot with custom colours, labels, and a linear regression line.
+
+ ```{r echo=FALSE}
+ knitr::include_graphics("img/lter_penguins.png")
+ ```
+
+If you want to "meet the penguins" properly take a look at the [Palmer Penguins page](https://allisonhorst.github.io/palmerpenguins/articles/intro.html).
+
+
+## Required Packages
+You need to have the following R packages installed:
+
+1. ggplot2: for creating the plots (part of "tidyverse" - more later)
+3. palmerpenguins: for the penguin dataset
+
+You can install them using the following commands:
+```{r installations, eval=FALSE}
+install.packages("ggplot2")
+install.packages("palmerpenguins")
+```
+
+Now, let's start by loading the required packages:
+```{r libraries}
+library(ggplot2)
+library(palmerpenguins)
+```
+
+## Step 1: Basic Data Inspection
+The `palmerpenguins` library contains the dataset we need so we can just ask it to load with this command:
+
+```{r}
+data(penguins)
+```
+
+Now let's look at the data by writing it's name:
+
+```{r}
+penguins
+```
+
+In the class I will show you a few other ways to look at the data. Notice the presence of missing data (`NA`) and the labelling of columns with headers and "metadata" (specification of type of data present, e.g., `fct` which means "factor").
+
+## Step 2: Making Basic Plots
+First let's try a simple univariate plot of the penguins' weight using ggplot2:
+
+```{r}
+ggplot(data = penguins, aes(x = body_mass_g)) + geom_histogram()
+```
+
+This is the typical form of all ggplot2 plots. The first function `ggplot()` is used to identify the data (`data = penguins`) and the aesthetic mapping (inside the `aes()` function), then we have a `+` follow by the "geom" that is the geometric construction that will be used to represent variation in the (aesthetically) mapped variable: here, a histogram. There is much more you can control here, but we will focus on bivariate plots in this tutorial. The warnings relate to the difficulty of plotting `NA` since this is not a finite value. `NA`s cause warnings and this is good - you should be thinking about them.
+
+So let's try another plot. This time let's see how body mass (on the ordinate) is affected by penguin species (on the abscissa):
+```{r}
+ggplot(data = penguins, aes(x = species, y = body_mass_g)) +
+  geom_boxplot()
+```
+
+Here `ggplot` has taken care of all the organisation and has calculated quartiles, outliers, etc. Notice that we were able to add the `geom_boxplot()` function on a new line. This wouldn't usually work in R because each time you press "enter" you are entering a new command, but it works here because the previous line ended with a `+`.
+
+If you want confidence intervals on your box plots you can add the argument `notch = TRUE` inside the brackets of `geom_boxplot()`. If you prefer kernel density estimation, try `geom_violin()` instead of `geom_boxplot()`. Loads of options!
+
+## Step 3: The Classic Bivariate Approach: Scatter Plot
+Now, let's create a basic scatter plot of penguin bill dimensions:
+```{r}
+ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point()
+```
+
+Here, we added `geom_point()` to create a scatter plot, and because I'm lazy I just wrote `penguins` rather than `data = penguins` in the `ggplot()` function because the function expects that the first argument will be the data. You should be feeling a little more comfortable now. These plots all look similar. You are beginning to learn the "grammar of graphics" after which ggplot2 is named.
+
+## Step 4: Add Custom colours
+Now, let's add custom colours to the points in our scatter plot. We will add `colour = species` to the aesthetic mapping to differentiate points by species.
+
+```{r}
+ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm, colour = species)) +
+  geom_point()
+```
+
+Now we will manually set the colours using `scale_colour_manual()` to assign "darkorange", "purple", and "cyan4" to the three species:
+```{r}
+ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm, colour = species)) +
+  geom_point() +
+  scale_colour_manual(values = c("darkorange", "purple", "cyan4"))
+```
+
+There are also automatic palettes available. Check using `?scale_colour_discrete` for example.
+
+## Step 5: Add Labels
+Next, let's add a title, subtitle, and axis labels to our plot using the labs() function:
+```{r}
+ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point(aes(colour = species, shape = species)) +
+  scale_colour_manual(values = c("darkorange", "purple", "cyan4")) +
+  labs(title = "Penguin bill dimensions",
+       subtitle = "Palmer Station LTER",
+       x = "Bill length (mm)",
+       y = "Bill depth (mm)")
+```
+
+We used `labs()` to add a title, subtitle, and axis labels to the plot. Notice that we have added a title and subtitle to the plot (not usually required) and we have altered the axis labels (by explicitly declaring them). Of course, you should be careful you get this manual step right and don't label them as something they are not! R will do whatever you tell it to do, no matter how silly!
+
+Notice that we also moved the `colour = species` argument into the `geom_point()` function inside an `aes()` function. The use of `aes()` as a wrapper means that the colour is calculated automatically, by species, exactly as in step 4. This is what aesthetic mapping is all about.
+
+Can you see what the `shape = species` argument did? (Depending on the plot type, other aesthetic mappings are available such as "fill").
+
+## Step 6: Add Trendline
+Now let's try a simplified version with a linear trend line:
+```{r}
+ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE, colour = "grey50") +
+  labs(x = "Bill length (mm)", y = "Bill depth (mm)")
+```
+
+Now you see a linear regression trend line added to the plot. This suggests that as the bill length increases, the bill depth decreases. The `method = "lm"` argument tells it to use a linear model (try "loess" if you want serious smoothing). As R told us this assesses how y is influenced by x (this is shown in R "model" notation as `y ~ x`). The `se = TRUE` argument tells it to draw confidence intervals around the regression line. Notice that the colour of the line (`grey50`) is **not** specified inside an `aes()` function and therefore it is uniform and as specified.
+
+## Step 5: Down to You
+Your task now is to modify the code in step 4 in order to make a separate trend line for each species.
+
+```{r include=FALSE}
+ggplot(penguins,aes(x = bill_length_mm, y = bill_depth_mm)) +
+  geom_point(aes(colour = species, shape = species), size = 3, alpha = 0.8) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguin bill dimensions (omit species)",
+       subtitle = "Palmer Station LTER",
+       x = "Bill length (mm)",
+       y = "Bill depth (mm)") +
+  geom_smooth(method = "lm", se = FALSE, aes(color = species))
+```
+
+What does this lead you to conclude about the association between bill length and bill depth?
+
+You may find the [Wikipedia page on Simpson's Paradox](https://en.wikipedia.org/wiki/Simpson's_paradox) useful.

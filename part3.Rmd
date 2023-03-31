@@ -1,0 +1,261 @@
+---
+title: "Biochemistry R Introduction Part 3"
+author: "Ben Dickins and Callum Rimmer"
+date: "2023-03-31"
+output: html_document
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(echo=TRUE)
+```
+
+# Tutorial Part 3: Basic Linear Modelling
+
+Here are the libraries we need for this part:
+
+```{r}
+library(tidyverse)
+library(lme4)
+```
+
+The `lme4` library is a library for carrying out linear mixed modelling. Find out more with `?lme4`. Base R has a generalized linear modelling framework built-in, but mixed models are more often appropriate in biological sciences since individual organisms may frequently be expected to differ in baseline and response and can therefore considered to be picked from a distribution of possible states and plasticities in the population. The creators of `lme4` don't like p values and neither do I, but we can show you methods for these if required.
+
+## Step 1: Our Dataset
+This one is a dataset from within the `lme4` library. I will explain a little about it, but let's take a look also:
+```{r examine-data}
+data(sleepstudy)
+?sleepstudy
+sleepstudy %>% head()
+```
+
+Note that we had to use the `head()` function to show the first 6 rows of `sleepstudy`. The technical reason for this is that `sleepstudy` is not a tibble. It is a data frame and they don't format prettily. Let's use that `summary()` function again:
+
+```{r}
+summary(sleepstudy)
+```
+
+Silly results so let's fix that:
+```{r}
+( sleepTibble <- tibble(sleepstudy) )
+```
+
+Note that the `tibble()` function has coerced the datatype for the `Subject` column to factors, and the other columns to "double" (high precision numeric). This is great (and again saves as from using additional `parse_*()` functions). We could also have typed `sleepTibble <- sleepstudy %>% tibble()` and I hope you noticed the outer brackets again!
+
+## Step 2: Plot It!
+Now we want to examine our data graphically and this will look familiar:
+
+```{r}
+sleepTibble %>%
+  filter(Subject == "308") %>%
+  ggplot(aes(x = Days, y = Reaction)) +
+  geom_point() +
+  scale_x_continuous(breaks = 0:9)
+```
+
+but notice how we piped directly into `ggplot()`, filtering on the fly. This is the power of the pipe. You build a pipeline, and your modifications to data are explicit. No more finding which was your original Excel spreadsheet (which, of course, is not good practice for reproducibility)!
+
+Let's do something to make plots look a bit different:
+
+```{r}
+old <- theme_set(theme_bw()) # show them theme setting
+```
+
+What is happening here is that the `theme_set()` is changing us to a new "black and white" setting (you'll see the effects of this in a minute), but it also emits an output that corresponds to the current theme setting (before the change to black and white). This (old) setting is assigned to the object `old`. We will use that later.
+
+For now let's keep making graphs:
+
+```{r}
+ggplot(sleepTibble, aes(x = Days, y = Reaction)) +
+  geom_point() +
+  scale_x_continuous(breaks = 0:9)
+```
+
+Oh no, that's hideous!
+
+## Step 3: Facetting - Subplots for Free!
+
+Why was the last graph so bad? Because of all that individual variation. You could just ignore that and use `geom_boxplot()`, but why not look at the subjects properly:
+
+```{r}
+ggplot(sleepTibble, aes(x = Days, y = Reaction)) +
+  geom_point() +
+  scale_x_continuous(breaks = 0:9) +
+  facet_wrap(~Subject)
+```
+
+We made only one change: the `facet_wrap()` function (there is another function called `facet_grid()` which we can explain). These are important because they allow you to split an entire plot into subplots based on a variable. This is a killer app!
+
+
+## Step 4: Some Data Processing
+Now we are also able to see features of the time course. Now the study included a baseline period from days 0 to 1 (inclusive) with sleep deprivation only starying from day 2. See `?sleepstudy` for more details. So we need to filter our data:
+
+```{r}
+( sleepDeprived <- sleepTibble %>%
+  filter(Days >= 2) %>%
+  mutate(days_deprived = Days - 2) )
+```
+
+We filtered to keep only data from day 2 onwards and we calculated a new column in which day 2 is the new day 0, day 3 is day 1, etc. This new column is called `days_deprived`.
+
+Let's tally our data using the `count()` function we encountered in part 2:
+
+```{r}
+sleepDeprived %>% count(days_deprived, Days)
+```
+
+## Step 5: Replotting
+Let's plot our data again:
+
+```{r}
+ggplot(sleepDeprived, aes(x = days_deprived, y = Reaction)) +
+  geom_point() +
+  scale_x_continuous(breaks = 0:7) +
+  facet_wrap(~Subject) +
+  labs(y = "Reaction Time", x = "Days deprived of sleep (0 = baseline)")
+```
+
+## Step 6: Basic Linear Model
+```{r}
+cp_model <- lm(Reaction ~ days_deprived, sleepDeprived)
+```
+
+Summarise:
+```{r}
+summary(cp_model)
+```
+
+Wow that `summary()` function is handy. It's the electric screwdriver of R.
+
+extract the coefficients of the model:
+```{r}
+coef(cp_model)
+```
+
+```{r}
+ggplot(sleepDeprived, aes(x = days_deprived, y = Reaction)) +
+  geom_abline(intercept = coef(cp_model)[1],
+              slope = coef(cp_model)[2],
+              color = 'blue') +
+  geom_point() +
+  scale_x_continuous(breaks = 0:7) +
+  facet_wrap(~Subject) +
+  labs(y = "Reaction Time", x = "Days deprived of sleep (0 = baseline)")
+```
+
+Now that is some serious plotting, but it turns out that a global linear model isn't a good fit for each subject. Individual differences matter.
+
+Add in "Subject" as a factor in the model (must be a factor variable - don't ever do this if it is a numeric - your result will be absurd and you might not notice!):
+
+```{r}
+np_model <- lm(Reaction ~ days_deprived + Subject + days_deprived:Subject,
+               data = sleepDeprived)
+
+summary(np_model)
+```
+
+Jiggery-pokery:
+```{r}
+all_intercepts <- c(coef(np_model)["(Intercept)"],
+                    coef(np_model)[3:19] + coef(np_model)["(Intercept)"])
+
+all_slopes  <- c(coef(np_model)["days_deprived"],
+                 coef(np_model)[20:36] + coef(np_model)["days_deprived"])
+
+ids <- sleepDeprived %>% pull(Subject) %>% levels() %>% factor()
+```
+
+Make a tibble with the data extracted above:
+```{r}
+( np_coef <- tibble(Subject = ids,
+                  intercept = all_intercepts,
+                  slope = all_slopes) )
+```
+
+Plot our new data as trend lines within broader plot:
+```{r}
+ggplot(sleepDeprived, aes(x = days_deprived, y = Reaction)) +
+  geom_abline(data = np_coef,
+              mapping = aes(intercept = intercept,
+                            slope = slope),
+              color = 'blue') +
+  geom_point() +
+  scale_x_continuous(breaks = 0:7) +
+  facet_wrap(~Subject) +
+  labs(y = "Reaction Time", x = "Days deprived of sleep (0 = baseline)")
+```
+
+Do they differ significantly from a slope of zero:
+```{r}
+np_coef %>% pull(slope) %>% t.test()
+```
+Yes!
+
+
+## YIKES! Mixed Effects Model at Last:
+
+```{r}
+pp_mod <- lmer(Reaction ~ days_deprived + (days_deprived | Subject), sleepDeprived)
+
+summary(pp_mod)
+```
+
+Explain the notation - brackets as random effects. Allows intercept and gradient to vary.
+
+Jiggery-pokery:
+```{r}
+newdata <- crossing(
+  Subject = sleepDeprived %>% pull(Subject) %>% levels() %>% factor(),
+  days_deprived = 0:7)
+
+head(newdata, 17)
+```
+
+```{r}
+newdata2 <- newdata %>%
+  mutate(Reaction = predict(pp_mod, newdata))
+```
+
+Plot again with mixed model gradients:
+
+```{r}
+ggplot(sleepDeprived, aes(x = days_deprived, y = Reaction)) +
+  geom_line(data = newdata2,
+            color = 'blue') +
+  geom_point() +
+  scale_x_continuous(breaks = 0:7) +
+  facet_wrap(~Subject) +
+  labs(y = "Reaction Time", x = "Days deprived of sleep (0 = baseline)")
+```
+
+Get info on our fixed effects' coefficients (the ones of interest):
+
+```{r}
+fixef(pp_mod)
+```
+
+OK - too detailed here:
+
+```{r}
+# standard error of fixed effects
+vcov(pp_mod) %>% diag() %>% sqrt()
+
+tvals <- fixef(pp_mod) / sqrt(diag(vcov(pp_mod)))
+tvals
+2 * (1 - pnorm(abs(tvals)))
+
+confint(pp_mod)
+
+# random effects
+sigma(pp_mod) # residual
+# variance-covariance matrix for random factor Subject
+VarCorr(pp_mod)[["Subject"]] # equivalently: VarCorr(pp_mod)[[1]]
+```
+
+Revert plotting behaviour:
+
+```{r}
+theme_set(old)
+```
+
+
+The End!
