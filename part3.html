@@ -359,12 +359,23 @@ display: none;
 
 <div id="tutorial-part-3-basic-linear-modelling" class="section level1">
 <h1>Tutorial Part 3: Basic Linear Modelling</h1>
+<div id="acknowledgment" class="section level2">
+<h2>Acknowledgment</h2>
+<p>The code from this section is mostly copied from <a href="https://psyteachr.github.io/stat-models-v1/introducing-linear-mixed-effects-models.html">this
+book chapter</a> which itself is inspired by Richard McElreath’s
+excellent book <a href="https://xcelab.net/rm/statistical-rethinking/">Statistical
+Rethinking</a> which I am studying presently. I will be making a few
+modifications over the next week. I apologise for missing this
+attribution in the initial version two days ago.</p>
+</div>
+<div id="preparation" class="section level2">
+<h2>Preparation</h2>
 <p>Here are the libraries we need for this part:</p>
 <pre class="r"><code>library(tidyverse)</code></pre>
 <pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-## ✔ dplyr     1.1.0     ✔ readr     2.1.4
+## ✔ dplyr     1.1.1     ✔ readr     2.1.4
 ## ✔ forcats   1.0.0     ✔ stringr   1.5.0
-## ✔ ggplot2   3.4.1     ✔ tibble    3.1.8
+## ✔ ggplot2   3.4.1     ✔ tibble    3.2.1
 ## ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
 ## ✔ purrr     1.0.1     
 ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
@@ -388,6 +399,7 @@ therefore considered to be picked from a distribution of possible states
 and plasticities in the population. The creators of <code>lme4</code>
 don’t like p values and neither do I, but we can show you methods for
 these if required.</p>
+</div>
 <div id="step-1-our-dataset" class="section level2">
 <h2>Step 1: Our Dataset</h2>
 <p>This one is a dataset from within the <code>lme4</code> library. I
@@ -431,7 +443,7 @@ function again:</p>
 ##  8     290.     7 308    
 ##  9     431.     8 308    
 ## 10     466.     9 308    
-## # … with 170 more rows</code></pre>
+## # ℹ 170 more rows</code></pre>
 <p>Note that the <code>tibble()</code> function has coerced the datatype
 for the <code>Subject</code> column to factors, and the other columns to
 “double” (high precision numeric). This is great (and again saves as
@@ -507,7 +519,7 @@ more details. So we need to filter our data:</p>
 ##  8     466.     9 308                 7
 ##  9     203.     2 309                 0
 ## 10     205.     3 309                 1
-## # … with 134 more rows</code></pre>
+## # ℹ 134 more rows</code></pre>
 <p>We filtered to keep only data from day 2 onwards and we calculated a
 new column in which day 2 is the new day 0, day 3 is day 1, etc. This
 new column is called <code>days_deprived</code>.</p>

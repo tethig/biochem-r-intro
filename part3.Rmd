@@ -11,6 +11,10 @@ knitr::opts_chunk$set(echo=TRUE)
 
 # Tutorial Part 3: Basic Linear Modelling
 
+## Acknowledgment
+The code from this section is mostly copied from [this book chapter](https://psyteachr.github.io/stat-models-v1/introducing-linear-mixed-effects-models.html) which itself is inspired by Richard McElreath's excellent book [Statistical Rethinking](https://xcelab.net/rm/statistical-rethinking/) which I am studying presently. I will be making a few modifications over the next week. I apologise for missing this attribution in the initial version two days ago.
+
+## Preparation
 Here are the libraries we need for this part:
 
 ```{r}
